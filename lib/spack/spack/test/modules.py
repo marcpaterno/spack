@@ -100,17 +100,17 @@ class ModuleFileGeneratorTests(MockPackagesTest):
 
     def setUp(self):
         super(ModuleFileGeneratorTests, self).setUp()
-        self.configuration_instance = spack.modules.CONFIGURATION
+        self.configuration_instance = spack.modules._module_config
         self.module_types_instance = spack.modules.module_types
         spack.modules.open = mock_open
         # Make sure that a non-mocked configuration will trigger an error
-        spack.modules.CONFIGURATION = None
+        spack.modules._module_config = None
         spack.modules.module_types = {self.factory.name: self.factory}
 
     def tearDown(self):
         del spack.modules.open
         spack.modules.module_types = self.module_types_instance
-        spack.modules.CONFIGURATION = self.configuration_instance
+        spack.modules._module_config = self.configuration_instance
         super(ModuleFileGeneratorTests, self).tearDown()
 
     def get_modulefile_content(self, spec):
@@ -226,7 +226,7 @@ class TclTests(ModuleFileGeneratorTests):
     }
 
     def test_simple_case(self):
-        spack.modules.CONFIGURATION = self.configuration_autoload_direct
+        spack.modules._module_config = self.configuration_autoload_direct
         spec = spack.spec.Spec(mpich_spec_string)
         content = self.get_modulefile_content(spec)
         self.assertTrue('module-whatis "mpich @3.0.4"' in content)
@@ -234,13 +234,13 @@ class TclTests(ModuleFileGeneratorTests):
                           spec, 'non-existing-tag')
 
     def test_autoload(self):
-        spack.modules.CONFIGURATION = self.configuration_autoload_direct
+        spack.modules._module_config = self.configuration_autoload_direct
         spec = spack.spec.Spec(mpileaks_spec_string)
         content = self.get_modulefile_content(spec)
         self.assertEqual(len([x for x in content if 'is-loaded' in x]), 2)
         self.assertEqual(len([x for x in content if 'module load ' in x]), 2)
 
-        spack.modules.CONFIGURATION = self.configuration_autoload_all
+        spack.modules._module_config = self.configuration_autoload_all
         spec = spack.spec.Spec(mpileaks_spec_string)
         content = self.get_modulefile_content(spec)
         self.assertEqual(len([x for x in content if 'is-loaded' in x]), 5)
@@ -251,7 +251,7 @@ class TclTests(ModuleFileGeneratorTests):
         # - 1 ('build','link') dependency
         # - 1 ('build',) dependency
         # Just make sure the 'build' dependency is not there
-        spack.modules.CONFIGURATION = self.configuration_autoload_direct
+        spack.modules._module_config = self.configuration_autoload_direct
         spec = spack.spec.Spec('dtbuild1')
         content = self.get_modulefile_content(spec)
         self.assertEqual(len([x for x in content if 'is-loaded' in x]), 2)
@@ -262,25 +262,25 @@ class TclTests(ModuleFileGeneratorTests):
         # - 1 ('build','link') dependency
         # - 1 ('build',) dependency
         # Just make sure the 'build' dependency is not there
-        spack.modules.CONFIGURATION = self.configuration_autoload_all
+        spack.modules._module_config = self.configuration_autoload_all
         spec = spack.spec.Spec('dtbuild1')
         content = self.get_modulefile_content(spec)
         self.assertEqual(len([x for x in content if 'is-loaded' in x]), 2)
         self.assertEqual(len([x for x in content if 'module load ' in x]), 2)
 
     def test_prerequisites(self):
-        spack.modules.CONFIGURATION = self.configuration_prerequisites_direct
+        spack.modules._module_config = self.configuration_prerequisites_direct
         spec = spack.spec.Spec('mpileaks arch=x86-linux')
         content = self.get_modulefile_content(spec)
         self.assertEqual(len([x for x in content if 'prereq' in x]), 2)
 
-        spack.modules.CONFIGURATION = self.configuration_prerequisites_all
+        spack.modules._module_config = self.configuration_prerequisites_all
         spec = spack.spec.Spec('mpileaks arch=x86-linux')
         content = self.get_modulefile_content(spec)
         self.assertEqual(len([x for x in content if 'prereq' in x]), 5)
 
     def test_alter_environment(self):
-        spack.modules.CONFIGURATION = self.configuration_alter_environment
+        spack.modules._module_config = self.configuration_alter_environment
         spec = spack.spec.Spec('mpileaks platform=test target=x86_64')
         content = self.get_modulefile_content(spec)
         self.assertEqual(
@@ -310,7 +310,7 @@ class TclTests(ModuleFileGeneratorTests):
             len([x for x in content if 'setenv LIBDWARF_ROOT' in x]), 1)
 
     def test_blacklist(self):
-        spack.modules.CONFIGURATION = self.configuration_blacklist
+        spack.modules._module_config = self.configuration_blacklist
         spec = spack.spec.Spec('mpileaks ^zmpi')
         content = self.get_modulefile_content(spec)
         self.assertEqual(len([x for x in content if 'is-loaded' in x]), 1)
@@ -324,7 +324,7 @@ class TclTests(ModuleFileGeneratorTests):
         self.assertEqual(len([x for x in content if 'module load ' in x]), 1)
 
     def test_conflicts(self):
-        spack.modules.CONFIGURATION = self.configuration_conflicts
+        spack.modules._module_config = self.configuration_conflicts
         spec = spack.spec.Spec('mpileaks')
         content = self.get_modulefile_content(spec)
         self.assertEqual(
@@ -334,11 +334,11 @@ class TclTests(ModuleFileGeneratorTests):
         self.assertEqual(
             len([x for x in content if x == 'conflict intel/14.0.1']), 1)
 
-        spack.modules.CONFIGURATION = self.configuration_wrong_conflicts
+        spack.modules._module_config = self.configuration_wrong_conflicts
         self.assertRaises(SystemExit, self.get_modulefile_content, spec)
 
     def test_suffixes(self):
-        spack.modules.CONFIGURATION = self.configuration_suffix
+        spack.modules._module_config = self.configuration_suffix
         spec = spack.spec.Spec('mpileaks+debug arch=x86-linux')
         spec.concretize()
         generator = spack.modules.TclModule(spec)
@@ -400,7 +400,7 @@ class LmodTests(ModuleFileGeneratorTests):
     }
 
     def test_simple_case(self):
-        spack.modules.CONFIGURATION = self.configuration_autoload_direct
+        spack.modules._module_config = self.configuration_autoload_direct
         spec = spack.spec.Spec(mpich_spec_string)
         content = self.get_modulefile_content(spec)
         self.assertTrue('-- -*- lua -*-' in content)
@@ -408,14 +408,14 @@ class LmodTests(ModuleFileGeneratorTests):
         self.assertTrue('whatis([[Version : 3.0.4]])' in content)
 
     def test_autoload(self):
-        spack.modules.CONFIGURATION = self.configuration_autoload_direct
+        spack.modules._module_config = self.configuration_autoload_direct
         spec = spack.spec.Spec(mpileaks_spec_string)
         content = self.get_modulefile_content(spec)
         self.assertEqual(
             len([x for x in content if 'if not isloaded(' in x]), 2)
         self.assertEqual(len([x for x in content if 'load(' in x]), 2)
 
-        spack.modules.CONFIGURATION = self.configuration_autoload_all
+        spack.modules._module_config = self.configuration_autoload_all
         spec = spack.spec.Spec(mpileaks_spec_string)
         content = self.get_modulefile_content(spec)
         self.assertEqual(
@@ -423,7 +423,7 @@ class LmodTests(ModuleFileGeneratorTests):
         self.assertEqual(len([x for x in content if 'load(' in x]), 5)
 
     def test_alter_environment(self):
-        spack.modules.CONFIGURATION = self.configuration_alter_environment
+        spack.modules._module_config = self.configuration_alter_environment
         spec = spack.spec.Spec('mpileaks platform=test target=x86_64')
         content = self.get_modulefile_content(spec)
         self.assertEqual(
@@ -448,7 +448,7 @@ class LmodTests(ModuleFileGeneratorTests):
             len([x for x in content if 'unsetenv("BAR")' in x]), 0)
 
     def test_blacklist(self):
-        spack.modules.CONFIGURATION = self.configuration_blacklist
+        spack.modules._module_config = self.configuration_blacklist
         spec = spack.spec.Spec(mpileaks_spec_string)
         content = self.get_modulefile_content(spec)
         self.assertEqual(
@@ -469,14 +469,14 @@ class DotkitTests(MockPackagesTest):
 
     def setUp(self):
         super(DotkitTests, self).setUp()
-        self.configuration_obj = spack.modules.CONFIGURATION
+        self.configuration_obj = spack.modules._module_config
         spack.modules.open = mock_open
         # Make sure that a non-mocked configuration will trigger an error
-        spack.modules.CONFIGURATION = None
+        spack.modules._module_config = None
 
     def tearDown(self):
         del spack.modules.open
-        spack.modules.CONFIGURATION = self.configuration_obj
+        spack.modules._module_config = self.configuration_obj
         super(DotkitTests, self).tearDown()
 
     def get_modulefile_content(self, spec):
@@ -487,7 +487,7 @@ class DotkitTests(MockPackagesTest):
         return content
 
     def test_dotkit(self):
-        spack.modules.CONFIGURATION = self.configuration_dotkit
+        spack.modules._module_config = self.configuration_dotkit
         spec = spack.spec.Spec('mpileaks arch=x86-linux')
         content = self.get_modulefile_content(spec)
         self.assertTrue('#c spack' in content)
