@@ -22,7 +22,11 @@
 # License along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 ##############################################################################
-"""Schema for target configuration files."""
+"""Schema for targets.yaml configuration files.
+
+.. literalinclude:: ../spack/schema/targets.py
+   :lines: 32-
+"""
 
 
 schema = {

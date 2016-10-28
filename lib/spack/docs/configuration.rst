@@ -6,67 +6,134 @@ Configuration
 
 .. _install-area:
 
-Install options
-----------------------------
+-----------------------------------
+Basic settings in ``config.yaml``
+-----------------------------------
 
-By default, Spack will install software into ``opt/spack``.
-To set a custom install directory, the option ``install_tree`` in
-``config.yaml`` can be used. This file can be found
-in a Spack installation's ``etc/spack/`` or a user's ``~/.spack/``
-directory.
+Spack's basic configuration options are set in ``config.yaml``.  You can
+see the default settings by looking at
+``etc/spack/defaults/config.yaml``:
 
-.. _temp-space:
+.. literalinclude:: ../../../etc/spack/defaults/config.yaml
+   :language: yaml
 
----------------
-Temporary space
----------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Config file variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. warning::
+You may notice some variables prefixed with ``$`` in the settings above.
+Spack understands several variables that can be used in values of
+configuration parameters.  They are:
 
-   Temporary space configuration will eventually be moved to
-   configuration files, but currently these settings are in
-   ``lib/spack/spack/__init__.py``
+  * ``$spack``: path to the prefix of this spack installation
+  * ``$tempdir``: default system temporary directory (e.g, from the
+    ``$TMPDIR`` environment variable)
+  * ``$user``: name of the current user
 
-By default, Spack will try to do all of its building in temporary
-space.  There are two main reasons for this.  First, Spack is designed
-to run out of a user's home directory, and on may systems the home
-directory is network mounted and potentially not a very fast
-filesystem.  We create build stages in a temporary directory to avoid
-this.  Second, many systems impose quotas on home directories, and
-``/tmp`` or similar directories often have more available space.  This
-helps conserve space for installations in users' home directories.
+Note that, as with shell variables, you can write these as ``$varname``
+or with braces to distinguish the variable from surrounding characters:
+``${varname}``
 
-You can customize temporary directories by editing
-``lib/spack/spack/__init__.py``.  Specifically, find this part of the file:
+^^^^^^^^^^^^^^^^^^^^
+``install_tree``
+^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: python
+Controls where Spack will install packages.  Default is
+``$spack/opt/spack``.
 
-   # Whether to build in tmp space or directly in the stage_path.
-   # If this is true, then spack will make stage directories in
-   # a tmp filesystem, and it will symlink them into stage_path.
-   use_tmp_stage = True
+^^^^^^^^^^^^^^^^^^^^
+``module_roots``
+^^^^^^^^^^^^^^^^^^^^
 
-   # Locations to use for staging and building, in order of preference
-   # Use a %u to add a username to the stage paths here, in case this
-   # is a shared filesystem.  Spack will use the first of these paths
-   # that it can create.
-   tmp_dirs = ['/nfs/tmp2/%u/spack-stage',
-               '/var/tmp/%u/spack-stage',
-               '/tmp/%u/spack-stage']
+Controls where Spack installs modules it generates.  You can customize
+the location for each type of module.  e.g.:
 
-The ``use_tmp_stage`` variable controls whether Spack builds
-**directly** inside the ``var/spack/`` directory.  Normally, Spack
-will try to find a temporary directory for a build, then it *symlinks*
-that temporary directory into ``var/spack/`` so that you can keep
-track of what temporary directories Spack is using.
+.. code-block:: yaml
 
-The ``tmp_dirs`` variable is a list of paths Spack should search when
-trying to find a temporary directory.  They can optionally contain a
-``%u``, which will substitute the current user's name into the path.
-The list is searched in order, and Spack will create a temporary stage
-in the first directory it finds to which it has write access.  Add
-more elements to the list to indicate where your own site's temporary
-directory is.
+   module_roots:
+     tcl:    $spack/share/spack/modules
+     lmod:   $spack/share/spack/lmod
+     dotkit: $spack/share/spack/dotkit
+
+^^^^^^^^^^^^^^^^^^^
+``build_stage``
+^^^^^^^^^^^^^^^^^^^
+
+Spack is designed to run out of a user home directories, and on many
+systems the home directory is NFS mounted *not* a fast filesystem.  We
+create build stages in a temporary directory to avoid this.  Many systems
+impose quotas on home directories, and ``/tmp`` or similar directories
+often have more available space.
+
+By default, the ``build_stage`` is set like this:
+
+.. code-block:: yaml
+
+   build_stage:
+    - $tempdir
+    - /nfs/tmp2/$user
+    - $spack/var/spack/stage
+
+This is an ordered list of paths that Spack should search when trying to
+find a temporary directory for the build stage.  The list is searched in
+order, and Spack will use the first directory to which it has write access.
+
+When Spack creates a temporary build stage, it places a symbolic link to
+the stage in ``$spack/var/spack/stage`` so that it can track the stage
+and clean it up later.  By default, build stages are removed after a
+successful package build.  You can manually clean build stages with
+:ref:`spack purge <cmd-spack-purge>`.
+
+Note that the last item in the list is ``$spack/var/spack/stage``.  If
+this is used as the build stage, Spack will build *directly* in its
+prefix and will not use temporary space.
+
+^^^^^^^^^^^^^^^^^^^^
+``source_cache``
+^^^^^^^^^^^^^^^^^^^^
+
+Location to cache downloaded tarballs and repositories.  By default these
+are stored in ``$spack/var/spack/cache``.  These are stored indefinitely
+by default. See :ref:`spack purge <cmd-spack-purge>`.
+
+^^^^^^^^^^^^^^^^^^^^
+``misc_cache``
+^^^^^^^^^^^^^^^^^^^^
+
+Temporary directory to store long-lived cache files, such as indices of
+packages available in repositories.  Defaults to ``~/.spack/cache``.
+
+
+^^^^^^^^^^^^^^^^^^^^
+``verify_ssl``
+^^^^^^^^^^^^^^^^^^^^
+
+When set to ``true`` (default) Spack will verify certificates of remote
+hosts when making ``ssl`` connections.  Set to ``false`` to disable, and
+tools like ``curl`` will use their ``--insecure`` options.  Disabling
+this can expose you to attacks.  Use at your own risk.
+
+^^^^^^^^^^^^^^^^^^^^
+``checksum``
+^^^^^^^^^^^^^^^^^^^^
+
+When set to ``true``, Spack verifies downloaded source code using a
+checksum, and will refuse to build packages that it cannot verify.  Set
+to ``false`` to disable these checks.  Disabling this can expose you to
+attacks.  Use at your own risk.
+
+^^^^^^^^^^^^^^^^^^^^
+``clean``
+^^^^^^^^^^^^^^^^^^^^
+
+By default, Spack clears variables in your environment that can change
+the way packages build. This includes ``LD_LIBRARY_PATH``, ``CPATH``,
+``LIBRARY_PATH``, ``DYLD_LIBRARY_PATH``, and others.
+
+You can set this to ``false`` to skip the environmnet cleaning step and
+build in a "dirty" environment.  Be aware that this will reduce the
+reproducibility of builds.
+
 
 .. _sec-external_packages:
 
@@ -143,36 +210,6 @@ The ``buildable`` does not need to be paired with external packages.
 It could also be used alone to forbid packages that may be
 buggy or otherwise undesirable.
 
-.. _system-packages:
-
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-Extracting System Packages
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In some cases, using false paths for system packages will not work.
-Some builds need to run binaries out of their dependencies, not just
-access their libraries: the build needs to know the real location of
-the system package.
-
-In this case, one can create a Spack-like single-package tree by
-creating symlinks to the files related to just that package.
-Depending on the OS, it is possible to obtain a list of the files in a
-single OS-installed package.  For example, on RedHat / Fedora:
-
-.. code-block:: console
-
-   $ repoquery --list openssl-devel
-   ...
-   /usr/lib/libcrypto.so
-   /usr/lib/libssl.so
-   /usr/lib/pkgconfig/libcrypto.pc
-   /usr/lib/pkgconfig/libssl.pc
-   /usr/lib/pkgconfig/openssl.pc
-   ...
-
-Spack currently does not provide an automated way to create a symlink
-tree to these files.
-
 
 .. _concretization-preferences:
 
@@ -232,3 +269,145 @@ The syntax for the ``provider`` section differs slightly from other
 concretization rules.  A provider lists a value that packages may
 ``depend_on`` (e.g, mpi) and a list of rules for fulfilling that
 dependency.
+
+
+.. _configuration-scopes:
+
+-------------------------
+Configuration Scopes
+-------------------------
+
+Spack pulls configuration data from files in several directories. There
+are three configuration scopes.  From lowest to highest:
+
+1. **defaults**: Stored in ``$(prefix)/etc/spack/defaults/``. These are
+   the "factory" settings. Customizations should be made in the other
+   higher precedence scopes, as defaults may change from version to
+   version.
+
+2. **site**: Stored in ``$(prefix)/etc/spack/``.  Settings here affect
+   only *this instance* of Spack.  They override ``defaults``.  The site
+   scope can can be used for per-project settings (one spack instance per
+   project) or for site-wide settings on a multi-user machine (e.g., for
+   a common spack instance).
+
+3. **user**: Stored in the home directory, ``~/.spack/``. These settings
+   affect all instances of Spack and take the highest precedence.
+
+When configurations conflict, settings from higher-precedence scopes
+override lower-precedence settings.
+
+Commands that modify scopes (e.g., ``spack compilers``, ``spack repo``,
+etc.) take a ``--scope=<name>`` parameter that you can use to control
+which scope is modified.
+
+.. _platform-scopes:
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+Platform-specific scopes
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For each scope above, there can *also* be platform-specific settings. For
+example, on Blue Gene/Q machines, Spack needs to know the location of
+cross-compilers for the compute nodes.  This configuration is in
+``etc/spack/defaults/bgq/compilers.yaml``.  It will take precedence over
+settings in the ``defaults`` scope, but can still be overridden by
+settings in ``site``, ``site/bgq``, ``user``, or ``user/bgq``. So, the
+full scope precedence is:
+
+1. ``defaults``
+2. ``defaults/<platform>``
+3. ``site``
+4. ``site/<platform>``
+5. ``user``
+6. ``user/<platform>``
+
+Each configuration directory may contain several configuration files,
+such as ``config.yaml``, ``compilers.yaml``, or ``mirrors.yaml``.
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configuration file format
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Configuration files are written in YAML.  For more details on the format,
+see `yaml.org <http://yaml.org>`_ and `libyaml
+<http://pyyaml.org/wiki/LibYAML>`_.  Each file is structured as nested
+dictionaries and lists.  e.g., ``config.yaml`` might look like this:
+
+.. code-block:: yaml
+
+   config:
+     install_tree: $spack/opt/spack
+     module_roots:
+       lmod:   $spack/share/spack/lmod
+     build_stage:
+       - $tempdir
+       - /nfs/tmp2/$user
+
+Note that everything in the config file needs to be nested under a
+top-level section corresponding to the config file's name.  So,
+``config.yaml`` starts with ``config:``, and ``mirrors.yaml`` starts with
+``mirrors:``.
+
+^^^^^^^^^^^^^^^^^^^^^^^^^
+Merging scopes
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, Spack attempts to merge configurations across scopes.  That
+is, if there are ``config.yaml`` files in both the default and site
+scopes, Spack will merge the settings between the two files.  You can see
+the results of this merge with the ``spack config get <configtype>``
+command. For example, if your configurations look like this:
+
+**defaults** scope:
+
+.. code-block:: yaml
+
+   config:
+     install_tree: $spack/opt/spack
+     module_roots:
+       lmod:   $spack/share/spack/lmod
+     build_stage:
+       - $tempdir
+       - /nfs/tmp2/$user
+
+**site** scope:
+
+.. code-block:: yaml
+
+   config:
+     install_tree: /some/other/directory
+
+Spack will only override ``install_tree`` in the ``config`` section, and
+will take the site preferences for other settings:
+
+.. code-block:: console
+
+   $ spack config get config
+   config:
+     install_tree: /some/other/directory
+     module_roots:
+       lmod:   $spack/share/spack/lmod
+     build_stage:
+       - $tempdir
+       - /nfs/tmp2/$user
+   $ _
+
+Sometimes, it is useful to *completely* override lower-precedence
+settings.  To do this, you can use *two* colons at the end of a key in a
+configuration file.  For example, if the **site** ``config.yaml`` above
+looks like this:
+
+.. code-block:: yaml
+
+   config::
+     install_tree: /some/other/directory
+
+Spack will ignore all lower-precedence configuration in the ``config::``
+section:
+
+.. code-block:: console
+
+   $ spack config get config
+   config:
+     install_tree: /some/other/directory
