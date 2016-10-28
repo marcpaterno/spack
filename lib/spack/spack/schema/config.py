@@ -62,9 +62,9 @@ schema = {
                     'type': 'boolean',
                     'default': True,
                 },
-                'dirty': {
+                'clean': {
                     'type': 'boolean',
-                    'default': False,
+                    'default': True,
                 },
             }
         },

@@ -60,6 +60,6 @@ config:
   checksum: true
 
 
-  # If set to true, `spack install` and friends will NOT clean
+  # If set to false, `spack install` and friends will NOT clean
   # potentially harmful variables from the build environment. Use wisely.
-  dirty: false
+  clean: true

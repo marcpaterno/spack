@@ -50,9 +50,14 @@ def setup_parser(subparser):
     subparser.add_argument(
         'spec', nargs=argparse.REMAINDER,
         help="specs to use for install.  Must contain package AND version.")
-    subparser.add_argument(
-        '--dirty', action='store_true', dest='dirty',
-        help="Install a package *without* cleaning the environment.")
+
+    cd_group = subparser.add_mutually_exclusive_group()
+    cd_group.add_argument(
+        '--clean', action='store_false', dest='dirty', default=None,
+        help="Clean environment before installing package.")
+    cd_group.add_argument(
+        '--dirty', action='store_true', dest='dirty', default=None,
+        help="Do NOT clean environment before installing.")
 
 
 def spack_transitive_include_path():
